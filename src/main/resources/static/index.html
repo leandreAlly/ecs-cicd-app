@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ECS CI/CD</title>
+  <style>
+    :root {
+      --bg: #0f1720;
+      --card: #17212b;
+      --ink: #e8eef5;
+      --muted: #8fa3b8;
+      --accent: #4ea1ff;
+      --line: #24313f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      padding: 2rem 1rem;
+    }
+    .card {
+      width: min(34rem, 100%);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+    }
+    .eyebrow {
+      color: var(--accent);
+      font-size: .75rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      margin: 0 0 1.25rem;
+    }
+    h1 { margin: 0 0 .35rem; font-size: 2rem; letter-spacing: -.02em; }
+    .lab { margin: 0 0 2rem; color: var(--muted); font-size: 1.05rem; }
+    .meta {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: .4rem 1.25rem;
+      justify-content: center;
+      border-top: 1px solid var(--line);
+      padding-top: 1.25rem;
+      font-size: .85rem;
+    }
+    .meta dt { color: var(--muted); text-align: right; margin: 0; }
+    .meta dd { margin: 0; text-align: left; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="eyebrow">Amazon ECS &middot; Fargate</p>
+    <h1>Leandre Tuyambaze</h1>
+    <p class="lab">ECS CI/CD</p>
+
+    <dl class="meta">
+      <dt>version</dt><dd id="version">&hellip;</dd>
+      <dt>commit</dt><dd id="commit">&hellip;</dd>
+      <dt>built</dt><dd id="builtAt">&hellip;</dd>
+    </dl>
+  </main>
+
+  <script>
+    fetch('/api/version')
+      .then(function (r) { return r.json(); })
+      .then(function (v) {
+        document.getElementById('version').textContent = v.version;
+        document.getElementById('commit').textContent = v.commit;
+        document.getElementById('builtAt').textContent = v.builtAt;
+      })
+      .catch(function () {
+        document.getElementById('version').textContent = 'unavailable';
+      });
+  </script>
+</body>
+</html>
