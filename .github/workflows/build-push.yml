@@ -20,6 +20,31 @@ jobs:
       id-token: write
       contents: read
     steps:
+      - name: Check the deployment configuration is complete
+        env:
+          AWS_REGION_V: ${{ vars.AWS_REGION }}
+          ECR_REPOSITORY_V: ${{ vars.ECR_REPOSITORY }}
+          AWS_ECR_ROLE_ARN_V: ${{ vars.AWS_ECR_ROLE_ARN }}
+          ARTIFACT_BUCKET_V: ${{ vars.ARTIFACT_BUCKET }}
+          TASK_FAMILY_V: ${{ vars.TASK_FAMILY }}
+          TASK_EXEC_ROLE_ARN_V: ${{ vars.TASK_EXEC_ROLE_ARN }}
+          TASK_ROLE_ARN_V: ${{ vars.TASK_ROLE_ARN }}
+          LOG_GROUP_V: ${{ vars.LOG_GROUP }}
+        run: |
+          set -eo pipefail
+          missing=()
+          for v in AWS_REGION ECR_REPOSITORY AWS_ECR_ROLE_ARN ARTIFACT_BUCKET \
+                   TASK_FAMILY TASK_EXEC_ROLE_ARN TASK_ROLE_ARN LOG_GROUP; do
+            eval "value=\${${v}_V}"
+            [ -n "$value" ] || missing+=("$v")
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing repository variables: ${missing[*]}"
+            exit 1
+          fi
+          echo "All 8 repository variables are set"
+
       - name: Check out the repository
         uses: actions/checkout@v4
         with:
