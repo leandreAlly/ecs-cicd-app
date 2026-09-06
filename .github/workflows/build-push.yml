@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: ecr-${{ github.ref }}
@@ -16,9 +17,6 @@ jobs:
   publish:
     name: Build and push
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - name: Check out the repository
         uses: actions/checkout@v5
@@ -29,7 +27,6 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ECR_ROLE_ARN }}
-          role-session-name: gha-ecr-${{ github.run_id }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Log in to Amazon ECR
@@ -41,7 +38,6 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          set -eo pipefail
           TAG="${GITHUB_SHA::7}"
           IMAGE="$REGISTRY/${{ vars.ECR_REPOSITORY }}:$TAG"
 
@@ -56,7 +52,6 @@ jobs:
 
       - name: Publish the deployment config
         run: |
-          set -eo pipefail
           mkdir -p build
 
           sed -e "s|<TASK_FAMILY>|${{ vars.TASK_FAMILY }}|" \
@@ -76,6 +71,5 @@ jobs:
 
       - name: Push the image
         run: |
-          set -eo pipefail
           docker push "${{ steps.image.outputs.uri }}"
           echo "Pushed ${{ steps.image.outputs.uri }} - EventBridge will start the pipeline"
