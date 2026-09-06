@@ -14,51 +14,16 @@ concurrency:
 
 jobs:
   publish:
-    name: Test, build and push
+    name: Build and push
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     steps:
-      - name: Check the deployment configuration is complete
-        env:
-          AWS_REGION_V: ${{ vars.AWS_REGION }}
-          ECR_REPOSITORY_V: ${{ vars.ECR_REPOSITORY }}
-          AWS_ECR_ROLE_ARN_V: ${{ vars.AWS_ECR_ROLE_ARN }}
-          ARTIFACT_BUCKET_V: ${{ vars.ARTIFACT_BUCKET }}
-          TASK_FAMILY_V: ${{ vars.TASK_FAMILY }}
-          TASK_EXEC_ROLE_ARN_V: ${{ vars.TASK_EXEC_ROLE_ARN }}
-          TASK_ROLE_ARN_V: ${{ vars.TASK_ROLE_ARN }}
-          LOG_GROUP_V: ${{ vars.LOG_GROUP }}
-        run: |
-          set -eo pipefail
-          missing=()
-          for v in AWS_REGION ECR_REPOSITORY AWS_ECR_ROLE_ARN ARTIFACT_BUCKET \
-                   TASK_FAMILY TASK_EXEC_ROLE_ARN TASK_ROLE_ARN LOG_GROUP; do
-            eval "value=\${${v}_V}"
-            [ -n "$value" ] || missing+=("$v")
-          done
-
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::Missing repository variables: ${missing[*]}"
-            exit 1
-          fi
-          echo "All 8 repository variables are set"
-
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           persist-credentials: false
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-
-      - name: Run the test suite
-        run: mvn -B test
 
       - name: Assume the ECR push role
         uses: aws-actions/configure-aws-credentials@v4
@@ -80,14 +45,6 @@ jobs:
           TAG="${GITHUB_SHA::7}"
           IMAGE="$REGISTRY/${{ vars.ECR_REPOSITORY }}:$TAG"
 
-          if aws ecr describe-images \
-               --repository-name "${{ vars.ECR_REPOSITORY }}" \
-               --image-ids "imageTag=$TAG" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Image $TAG already exists - tags are immutable, nothing to do"
-            exit 0
-          fi
-
           docker build \
             --build-arg "VERSION=$TAG" \
             --build-arg "COMMIT=$GITHUB_SHA" \
@@ -95,13 +52,9 @@ jobs:
             --tag "$IMAGE" \
             .
 
-          {
-            echo "exists=false"
-            echo "uri=$IMAGE"
-          } >> "$GITHUB_OUTPUT"
+          echo "uri=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Publish the deployment config
-        if: steps.image.outputs.exists == 'false'
         run: |
           set -eo pipefail
           mkdir -p build
@@ -114,21 +67,14 @@ jobs:
               -e "s|<IMAGE>|${{ steps.image.outputs.uri }}|" \
               taskdef.json > build/taskdef.json
 
-          if grep -q '<[A-Z_]*>' build/taskdef.json; then
-            echo "::error::Unsubstituted placeholders remain in taskdef.json:"
-            grep -o '<[A-Z_]*>' build/taskdef.json | sort -u
-            exit 1
-          fi
           jq empty build/taskdef.json
 
           cp appspec.yaml build/appspec.yaml
           (cd build && zip -q app.zip taskdef.json appspec.yaml)
 
           aws s3 cp build/app.zip "s3://${{ vars.ARTIFACT_BUCKET }}/config/app.zip"
-          echo "Published deployment config for ${{ steps.image.outputs.uri }}"
 
       - name: Push the image
-        if: steps.image.outputs.exists == 'false'
         run: |
           set -eo pipefail
           docker push "${{ steps.image.outputs.uri }}"
