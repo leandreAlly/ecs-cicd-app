@@ -72,4 +72,3 @@ jobs:
       - name: Push the image
         run: |
           docker push "${{ steps.image.outputs.uri }}"
-          echo "Pushed ${{ steps.image.outputs.uri }} - EventBridge will start the pipeline"
