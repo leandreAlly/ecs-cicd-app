@@ -21,9 +21,8 @@ ARG VERSION=local
 ARG COMMIT=unknown
 
 ENV APP_VERSION=$VERSION \
-    APP_COMMIT=$COMMIT \
-    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
+    APP_COMMIT=$COMMIT
 
 USER app
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/app.jar"]
